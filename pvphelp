@@ -1,9 +1,7 @@
--- Script: Solo Antena de Nombres para ver jugadores de lejos
-
 local Players = game:GetService("Players")
-local localPlayer = Players.LocalPlayer
+local LocalPlayer = Players.LocalPlayer
 
--- Crear un BillboardGui con el nombre del jugador sobre su cabeza
+-- === NOMBRE SOBRE LA CABEZA ===
 local function createNameTag(character, playerName, isTargeted)
 	if not character then return end
 
@@ -23,7 +21,7 @@ local function createNameTag(character, playerName, isTargeted)
 	textLabel.Size = UDim2.new(1, 0, 1, 0)
 	textLabel.BackgroundTransparency = 1
 	textLabel.Text = playerName
-	textLabel.TextColor3 = Color3.new(1, 1, 1)  -- Color blanco para los nombres
+	textLabel.TextColor3 = Color3.new(1, 1, 1)
 	textLabel.TextStrokeTransparency = 0
 	textLabel.TextScaled = true
 	textLabel.Font = Enum.Font.SourceSansBold
@@ -31,9 +29,8 @@ local function createNameTag(character, playerName, isTargeted)
 	billboard.Parent = character
 end
 
--- Añadir etiqueta de nombre al jugador dado
 local function setupPlayer(player)
-	if player == localPlayer then return end
+	if player == LocalPlayer then return end
 
 	local function onCharacterAdded(character)
 		createNameTag(character, player.Name, false)
@@ -46,10 +43,66 @@ local function setupPlayer(player)
 	player.CharacterAdded:Connect(onCharacterAdded)
 end
 
--- Ejecutar al inicio para jugadores existentes
 for _, player in pairs(Players:GetPlayers()) do
 	setupPlayer(player)
 end
 
--- Conectarse para futuros jugadores
 Players.PlayerAdded:Connect(setupPlayer)
+
+-- === ANTI FALL COOLDOWN EXTREMO ===
+local function noFallCooldown(character)
+	local humanoid = character:WaitForChild("Humanoid")
+
+	humanoid.StateChanged:Connect(function(oldState, newState)
+		if newState == Enum.HumanoidStateType.GettingUp then
+			humanoid:ChangeState(Enum.HumanoidStateType.Running)
+		elseif newState == Enum.HumanoidStateType.FallingDown or newState == Enum.HumanoidStateType.Physics then
+			humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+		end
+	end)
+
+	while humanoid and humanoid.Parent do
+		if humanoid:GetState() == Enum.HumanoidStateType.GettingUp or humanoid:GetState() == Enum.HumanoidStateType.FallingDown then
+			humanoid:ChangeState(Enum.HumanoidStateType.Running)
+		end
+		task.wait(0.01)
+	end
+end
+
+LocalPlayer.CharacterAdded:Connect(noFallCooldown)
+if LocalPlayer.Character then
+	noFallCooldown(LocalPlayer.Character)
+end
+
+-- === ANTI RAGDOLL ===
+local function preventRagdoll(character)
+	local humanoid = character:WaitForChild("Humanoid")
+
+	for _, v in ipairs(character:GetDescendants()) do
+		if v:IsA("BallSocketConstraint") or v:IsA("HingeConstraint") or v:IsA("Motor6D") then
+			v.Enabled = true
+		end
+	end
+
+	humanoid.StateChanged:Connect(function(old, new)
+		if new == Enum.HumanoidStateType.Physics or new == Enum.HumanoidStateType.FallingDown or new == Enum.HumanoidStateType.Ragdoll then
+			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+		end
+	end)
+
+	local function monitor()
+		while character and character.Parent do
+			if not humanoid or not humanoid.Parent then
+				character:BreakJoints()
+			end
+			task.wait(0.5)
+		end
+	end
+
+	task.spawn(monitor)
+end
+
+LocalPlayer.CharacterAdded:Connect(preventRagdoll)
+if LocalPlayer.Character then
+	preventRagdoll(LocalPlayer.Character)
+end
