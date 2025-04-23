@@ -1,7 +1,7 @@
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- === NOMBRE SOBRE LA CABEZA ===
+-- === NOMBRE SOBRE LA CABEZA CON DISTANCIA EN METROS ===
 local function createNameTag(character, playerName, isTargeted)
 	if not character then return end
 
@@ -11,7 +11,7 @@ local function createNameTag(character, playerName, isTargeted)
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "NameTag"
 	billboard.Adornee = head
-	billboard.Size = UDim2.new(0, 100, 0, 30)
+	billboard.Size = UDim2.new(0, 200, 0, 50)  -- Aumentamos el tamaño de la etiqueta
 	billboard.StudsOffset = Vector3.new(0, 3, 0)
 	billboard.AlwaysOnTop = true
 	billboard.MaxDistance = math.huge
@@ -20,13 +20,40 @@ local function createNameTag(character, playerName, isTargeted)
 	textLabel.Parent = billboard
 	textLabel.Size = UDim2.new(1, 0, 1, 0)
 	textLabel.BackgroundTransparency = 1
-	textLabel.Text = playerName
 	textLabel.TextColor3 = Color3.new(1, 1, 1)
 	textLabel.TextStrokeTransparency = 0
-	textLabel.TextScaled = true
+	textLabel.TextScaled = true  -- Hacemos que el texto se ajuste al tamaño del label
 	textLabel.Font = Enum.Font.SourceSansBold
+	textLabel.TextSize = 40  -- Aumentamos el tamaño de la letra
 
 	billboard.Parent = character
+
+	-- === ACTUALIZACIÓN DE DISTANCIA EN TIEMPO REAL ===
+	task.spawn(function()
+		while character and character.Parent and head and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") do
+			local root = LocalPlayer.Character.HumanoidRootPart
+			local distance = (head.Position - root.Position).Magnitude
+
+			-- Convertimos la distancia a centímetros
+			local distanceInCm = distance * 28.35
+
+			-- Convertimos la distancia a metros
+			local distanceInMeters = distanceInCm / 100
+
+			-- Opcional: cambiar color por distancia
+			if distanceInMeters < 30 then
+				textLabel.TextColor3 = Color3.fromRGB(0, 255, 0) -- Verde (cerca)
+			elseif distanceInMeters < 100 then
+				textLabel.TextColor3 = Color3.fromRGB(255, 255, 0) -- Amarillo (medio)
+			else
+				textLabel.TextColor3 = Color3.fromRGB(255, 0, 0) -- Rojo (lejos)
+			end
+
+			-- Actualizamos el texto con el nombre y la distancia en metros
+			textLabel.Text = string.format("%s | %.2f m", playerName, distanceInMeters)
+			task.wait(0.2)
+		end
+	end)
 end
 
 local function setupPlayer(player)
@@ -53,7 +80,7 @@ Players.PlayerAdded:Connect(setupPlayer)
 local function noFallCooldown(character)
 	local humanoid = character:WaitForChild("Humanoid")
 
-	humanoid.StateChanged:Connect(function(oldState, newState)
+	humanoid.StateChanged:Connect(function(_, newState)
 		if newState == Enum.HumanoidStateType.GettingUp then
 			humanoid:ChangeState(Enum.HumanoidStateType.Running)
 		elseif newState == Enum.HumanoidStateType.FallingDown or newState == Enum.HumanoidStateType.Physics then
@@ -84,7 +111,7 @@ local function preventRagdoll(character)
 		end
 	end
 
-	humanoid.StateChanged:Connect(function(old, new)
+	humanoid.StateChanged:Connect(function(_, new)
 		if new == Enum.HumanoidStateType.Physics or new == Enum.HumanoidStateType.FallingDown or new == Enum.HumanoidStateType.Ragdoll then
 			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 		end
