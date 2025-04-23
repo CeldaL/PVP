@@ -1,0 +1,55 @@
+-- Script: Solo Antena de Nombres para ver jugadores de lejos
+
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+
+-- Crear un BillboardGui con el nombre del jugador sobre su cabeza
+local function createNameTag(character, playerName, isTargeted)
+	if not character then return end
+
+	local head = character:FindFirstChild("Head") or character:WaitForChild("Head", 5)
+	if not head or character:FindFirstChild("NameTag") then return end
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "NameTag"
+	billboard.Adornee = head
+	billboard.Size = UDim2.new(0, 100, 0, 30)
+	billboard.StudsOffset = Vector3.new(0, 3, 0)
+	billboard.AlwaysOnTop = true
+	billboard.MaxDistance = math.huge
+
+	local textLabel = Instance.new("TextLabel")
+	textLabel.Parent = billboard
+	textLabel.Size = UDim2.new(1, 0, 1, 0)
+	textLabel.BackgroundTransparency = 1
+	textLabel.Text = playerName
+	textLabel.TextColor3 = Color3.new(1, 1, 1)  -- Color blanco para los nombres
+	textLabel.TextStrokeTransparency = 0
+	textLabel.TextScaled = true
+	textLabel.Font = Enum.Font.SourceSansBold
+
+	billboard.Parent = character
+end
+
+-- Añadir etiqueta de nombre al jugador dado
+local function setupPlayer(player)
+	if player == localPlayer then return end
+
+	local function onCharacterAdded(character)
+		createNameTag(character, player.Name, false)
+	end
+
+	if player.Character then
+		onCharacterAdded(player.Character)
+	end
+
+	player.CharacterAdded:Connect(onCharacterAdded)
+end
+
+-- Ejecutar al inicio para jugadores existentes
+for _, player in pairs(Players:GetPlayers()) do
+	setupPlayer(player)
+end
+
+-- Conectarse para futuros jugadores
+Players.PlayerAdded:Connect(setupPlayer)
